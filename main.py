@@ -1,7 +1,18 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 import os
+import unicodedata
+import json
+
+def text_normalizer(text):
+    if isinstance(text, str):
+        text_no_accent = unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('ASCII')
+        return text_no_accent.lower()
+    return text
+
+sp_state = json.load(open("geojson/map.geojson", 'r', encoding="utf8"))
 
 # Configuração da página
 st.set_page_config(layout="wide")
@@ -18,7 +29,7 @@ num = st.number_input(
     min_value=1,
     max_value=10000,
     value=5000,
-    step=1000,
+    step=500,
     help="Escolha o número de linhas a serem carregadas do dataset. O padrão é 1000."
 )
 
@@ -67,6 +78,8 @@ fig.update_layout(
 # Mostrar gráfico no Streamlit
 st.plotly_chart(fig, use_container_width=True)
 
+
+
 # Placeholder para próximos gráficos:
 st.markdown("---")
 st.markdown("- Tipos de pagamento por geolocalização - HEATMAP")
@@ -75,15 +88,31 @@ st.title("Tipos de Cliente por Geolocalização")
 
 
 city = pd.read_csv('coordcidades/municipios.csv')
-city_sp = city[city['ddd'] == 11]
+city_sp = city[city['ddd'].between(11, 19)]
+city_sp['city'] = city_sp['city'].apply(text_normalizer)
 
-clients = pd.read_csv( "datasets/olist_customers_dataset.csv")
+clients = pd.read_csv("datasets/olist_customers_dataset.csv", index_col=False, sep=",")
+clients['ddd'] = clients['ddd'].replace('SP', 11)
+clients['city'] = clients['city'].apply(text_normalizer)
 
+client_city_merge = pd.merge(city_sp, clients, on='city', how='inner')
 
+client_count = client_city_merge.groupby('city').size().reset_index(name='client_count')
+df_final = pd.merge(client_city_merge, client_count, on='city', how='left')
 
-#pegar tudo que for sp -> 11
-#coluna customer state -> ddd
-
+fig_customer_city = px.choropleth_mapbox(df_final, 
+                               locations="codigo_ibge",
+                               geojson=sp_state,
+                               featureidkey="properties.id",
+                               color="client_count",
+                               hover_name="city",
+                               mapbox_style="open-street-map",
+                               center={"lat": -23.5489, "lon": -46.6388},
+                               zoom=7.2,
+                               opacity=0.5,
+                               color_continuous_scale="RdBu_r",
+                               title="Quantidade de clientes por município")
+st.plotly_chart(fig_customer_city, use_container_width=True)
 
 
 
