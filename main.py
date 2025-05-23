@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
-import os
 import unicodedata
 import json
 
@@ -15,14 +14,19 @@ def text_normalizer(text):
 sp_state = json.load(open("geojson/map.geojson", 'r', encoding="utf8"))
 
 # Configuração da página
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", page_title="PCG Storytelling de Dados", page_icon=":bar_chart:")
+
+
 
 st.title("PCG Storytelling de Dados")
 st.markdown("Análise de Dados com Storytelling")
 
 
-# Verificar diretório atual para evitar erros de caminho
-st.write("Diretório atual:", os.getcwd())
+
+st.markdown("---")
+st.title("Análise de Tempo de Entrega",)
+st.markdown("Nessa análise é possível observar o tempo entre o pedido e a entrega do produto.")
+st.markdown("---")
 
 num = st.number_input(
     "Quantas linhas você quer carregar do dataset?", 
@@ -33,7 +37,6 @@ num = st.number_input(
     help="Escolha o número de linhas a serem carregadas do dataset. O padrão é 1000."
 )
 
-# Carregar dados com limitação de colunas e linhas
 try:
     pedidoxentrega = pd.read_csv(
         "datasets/olist_orders_dataset.csv",
@@ -43,19 +46,19 @@ except FileNotFoundError:
     st.error("Arquivo 'olist_orders_dataset.csv' não encontrado. Verifique o caminho e tente novamente.")
     st.stop()
 
-# Conversão de colunas para datetime
+
 pedidoxentrega['order_purchase_timestamp'] = pd.to_datetime(pedidoxentrega['order_purchase_timestamp'], errors='coerce')
 pedidoxentrega['order_delivered_customer_date'] = pd.to_datetime(pedidoxentrega['order_delivered_customer_date'], errors='coerce')
 
-# Remover linhas com datas ausentes
+
 pedidoxentrega = pedidoxentrega.dropna(subset=['order_purchase_timestamp', 'order_delivered_customer_date'])
 
-# Cálculo do tempo de entrega em dias
+
 pedidoxentrega['tempo_entrega_dias'] = (
     pedidoxentrega['order_delivered_customer_date'] - pedidoxentrega['order_purchase_timestamp']
 ).dt.days
 
-# Criar gráfico
+
 fig = go.Figure()
 
 fig.add_trace(go.Line(
@@ -75,17 +78,14 @@ fig.update_layout(
     xaxis_tickformat="%Y-%m-%d"
 )
 
-# Mostrar gráfico no Streamlit
 st.plotly_chart(fig, use_container_width=True)
 
 
 
-# Placeholder para próximos gráficos:
 st.markdown("---")
-st.markdown("- Tipos de pagamento por geolocalização - HEATMAP")
-
 st.title("Tipos de Cliente por Geolocalização")
-
+st.markdown("Essa análise mostra a quantidade de clientes por município na região de São Paulo.")
+st.markdown("---")
 
 city = pd.read_csv('coordcidades/municipios.csv')
 city_sp = city[city['ddd'].between(11, 19)]
@@ -114,8 +114,41 @@ fig_customer_city = px.choropleth_mapbox(df_final,
                                title="Quantidade de clientes por município")
 st.plotly_chart(fig_customer_city, use_container_width=True)
 
+st.markdown("---")
+st.title("Categorias de Produtos com mais Vendas")
+st.markdown("Essa análise mostra a quantidade de vendas por categoria de produto.")
+st.markdown("---")
 
 
-st.markdown("- Tempo de localização entre pedido e entrega por geolocalização - Heatmap")
-st.markdown("- Quantas vendas foram feitas em cada estado - Gráfico de barras")
-st.markdown("- Qual categoria mais vendeu - Gráfico de pizza")
+produtos = pd.read_csv("datasets/olist_products_dataset.csv",  usecols =['product_id','product_category_name'])
+orders = pd.read_csv("datasets/olist_order_items_dataset.csv", usecols=['order_id','product_id'])
+
+
+productosxorders = pd.merge(produtos, orders, on='product_id', how='inner')
+orders_count = productosxorders.groupby('product_category_name').size().reset_index(name='orders_count')	
+productosxorders = pd.merge(produtos, orders_count, on='product_category_name', how='left')
+
+fig_pizza = px.pie(productosxorders,
+                   names='product_category_name',
+                   values='orders_count',
+                   title='Quantidade de vendas por categoria de produto',
+                   color_discrete_sequence=px.colors.sequential.Rainbow_r,
+                   hole=0.3)
+exploded = [0.1] * len(productosxorders['product_category_name'])
+fig_pizza.update_traces(textposition='inside', textinfo='percent+label', pull=exploded)
+fig_pizza.update_layout(
+    title_x=0.3,
+    title_y=0.95,
+    title_font=dict(size=20),
+    legend_title_text='Categorias de produtos',
+    legend_title_font=dict(size=15),
+    legend_font=dict(size=12)
+)
+fig_pizza.update_traces(textfont_size=12, textfont_color='black')
+st.plotly_chart(fig_pizza, use_container_width=True, use_container_height=True)
+
+
+
+
+
+st.markdown("---")
