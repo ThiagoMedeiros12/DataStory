@@ -13,9 +13,44 @@ def text_normalizer(text):
 
 sp_state = json.load(open("geojson/map.geojson", 'r', encoding="utf8"))
 
-# Configuração da página
 st.set_page_config(layout="wide", page_title="PCG Storytelling de Dados", page_icon=":bar_chart:")
 
+with st.sidebar:
+    st.title("Análise de Dataset")
+    st.subheader("Uma história sobre análise exploratória")
+    
+    st.markdown("---")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        github_html = """
+        <div style="text-align: center;">
+            <a href="https://github.com/ThiagoMedeiros12/DataStory" target="_blank">
+                <img src="https://skillicons.dev/icons?i=github" width="50">
+            </a>
+        </div>
+        """
+        st.markdown(github_html, unsafe_allow_html=True)
+
+    with col2:
+        linkedin_html = """
+        <div style="text-align: center;">
+            <a href="https://linkedin.com/in/thiago-medeiros-cc" target="_blank">
+                <img src="https://skillicons.dev/icons?i=linkedin" width="50">
+            </a>
+        </div>
+        """
+        st.markdown(linkedin_html, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    st.markdown("### Desenvolvido por:")
+    st.markdown("Thiago Medeiros")
+    st.markdown("📧 thia.med@hotmail.com")
+
+    st.markdown("---")
+    st.markdown("v1.0.0")
 
 
 st.title("PCG Storytelling de Dados")
@@ -222,6 +257,75 @@ fig_pizza.update_layout(
 fig_pizza.update_traces(textfont_size=12, textfont_color='black')
 st.plotly_chart(fig_pizza, use_container_width=True, use_container_height=True)
 
+#-----------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 st.markdown("---")
 
+orderpayments = pd.read_csv("datasets/olist_order_payments_dataset.csv", index_col=False)
+orders = pd.read_csv("datasets/olist_orders_dataset.csv", index_col=False)
+st.markdown("Esse é o dataset de pagamentos sem tratamento: ")
+st.write(orderpayments.head())
+st.markdown("Esse é o dataset de pedidos sem tratamento: ")
+st.write(orders.head())
+
+st.markdown("---")
+
+orderpaymentstarget = pd.read_csv("datasets/olist_order_payments_dataset.csv", usecols=['order_id', 'payment_type'])
+orderstarget = pd.read_csv("datasets/olist_orders_dataset.csv", usecols=['order_id', 'customer_id'])
+custumerdata = pd.read_csv("datasets/olist_customers_dataset.csv", usecols=['customer_id', 'city'])
+
+orderpaymentsorders = pd.merge(orderpaymentstarget, orderstarget, on='order_id', how='inner')
+st.markdown("Esse é o dataset de pagamentos e pedidos após o merge das colunas de interesse: ")
+st.write(orderpaymentsorders.head())
+
+paymentcity = pd.merge(orderpaymentsorders, custumerdata, on='customer_id', how='inner')
+
+st.markdown("Agora acrescentei a tabela com as Cidades: ")
+st.write(paymentcity.head())
+
+prep_city_payment = paymentcity.drop(['customer_id', 'order_id'], axis=1)
+st.markdown("---")
+city_payment = pd.crosstab(prep_city_payment['city'], prep_city_payment['payment_type'])
+list_city = paymentcity['city'].unique().tolist()
+selected_city = st.multiselect(
+    'Selecione a cidade:',
+    options=list_city,
+    default=list_city[0:2]
+)
+
+st.write(city_payment.loc[selected_city])
+
+filtered_data = paymentcity[paymentcity['city'].isin(selected_city)]
+
+fig = px.histogram(
+    filtered_data, 
+    x='city', 
+    color='payment_type', 
+    title='Tipo de Pagamento X Cidade',
+    labels={'payment_type': 'Tipo de Pagamento', 'count': 'Quantidade', 'city': 'Cidade'},
+    barmode='group',
+    opacity=0.8,
+)
+
+fig.update_layout(
+    xaxis_title='Tipo de Pagamento',
+    yaxis_title='Quantidade',
+    legend_title='Cidade',
+    font=dict(size=12),
+    bargap=0.2,
+    bargroupgap=0.3
+)
+
+fig.update_yaxes(
+    autorange=True,
+)
+
+fig.update_xaxes(
+    categoryorder='total descending'
+)
+
+st.plotly_chart(fig)
+
+
+st.markdown("---")
+st.markdown("---")
