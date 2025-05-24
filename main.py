@@ -260,6 +260,9 @@ st.plotly_chart(fig_pizza, use_container_width=True, use_container_height=True)
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 st.markdown("---")
+st.title("Tipos de Pagamento por Cidade")
+st.markdown("Essa análise mostra a quantidade de pagamentos por tipo de pagamento e cidade.")
+st.markdown("---")
 
 orderpayments = pd.read_csv("datasets/olist_order_payments_dataset.csv", index_col=False)
 orders = pd.read_csv("datasets/olist_orders_dataset.csv", index_col=False)
@@ -296,6 +299,8 @@ selected_city = st.multiselect(
 st.write(city_payment.loc[selected_city])
 
 filtered_data = paymentcity[paymentcity['city'].isin(selected_city)]
+
+st.write("---")
 
 fig = px.histogram(
     filtered_data, 
