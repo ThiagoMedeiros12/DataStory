@@ -27,7 +27,6 @@ st.markdown("---")
 st.title("Análise de Tempo de Entrega",)
 st.markdown("Nessa análise é possível observar o tempo entre o pedido e a entrega do produto.")
 st.markdown("---")
-
 num = st.number_input(
     "Quantas linhas você quer carregar do dataset?", 
     min_value=1,
@@ -36,28 +35,44 @@ num = st.number_input(
     step=500,
     help="Escolha o número de linhas a serem carregadas do dataset. O padrão é 1000."
 )
-
+st.markdown("---")
+orders = pd.read_csv("datasets/olist_orders_dataset.csv", index_col = False, nrows=num)
+st.markdown("Esse é o dataset de pedidos sem tratamento: ")
+st.write(orders.head())
 try:
     pedidoxentrega = pd.read_csv(
         "datasets/olist_orders_dataset.csv",
-        usecols=['order_id', 'order_purchase_timestamp', 'order_delivered_customer_date' ] , nrows = num # Pode ajustar conforme quiser
+        usecols=['order_purchase_timestamp', 'order_delivered_customer_date'] , nrows = num 
     )
 except FileNotFoundError:
     st.error("Arquivo 'olist_orders_dataset.csv' não encontrado. Verifique o caminho e tente novamente.")
     st.stop()
+st.markdown("---")
+st.markdown("Retiramos somente as colunas de interesse do dataset de pedidos.")
+st.markdown("Esse é o dataset de pedidos com as colunas de interesse: ")
+st.write(pedidoxentrega.head())
 
 
 pedidoxentrega['order_purchase_timestamp'] = pd.to_datetime(pedidoxentrega['order_purchase_timestamp'], errors='coerce')
 pedidoxentrega['order_delivered_customer_date'] = pd.to_datetime(pedidoxentrega['order_delivered_customer_date'], errors='coerce')
 
 
+st.markdown("---")
 pedidoxentrega = pedidoxentrega.dropna(subset=['order_purchase_timestamp', 'order_delivered_customer_date'])
+
+
 
 
 pedidoxentrega['tempo_entrega_dias'] = (
     pedidoxentrega['order_delivered_customer_date'] - pedidoxentrega['order_purchase_timestamp']
 ).dt.days
 
+st.markdown("Esse é o dataset de pedidos com a coluna de tempo de entrega: ")
+st.write(pedidoxentrega.head())
+st.markdown("---")
+st.markdown("Esse é o gráfico de dispersão do tempo entre o pedido e a entrega do produto: ")
+st.markdown("Esse gráfico mostra a relação entre o tempo de entrega e a data do pedido. Cada ponto representa um pedido, e o eixo Y representa o tempo de entrega em dias.")
+st.markdown("O eixo X representa a data do pedido. O gráfico pode ajudar a identificar padrões ou tendências no tempo de entrega ao longo do tempo.")
 
 fig = go.Figure()
 
@@ -80,7 +95,7 @@ fig.update_layout(
 
 st.plotly_chart(fig, use_container_width=True)
 
-
+#-----------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 st.markdown("---")
 st.title("Tipos de Cliente por Geolocalização")
@@ -88,18 +103,52 @@ st.markdown("Essa análise mostra a quantidade de clientes por município na reg
 st.markdown("---")
 
 city = pd.read_csv('coordcidades/municipios.csv')
+
+
 city_sp = city[city['ddd'].between(11, 19)]
-city_sp['city'] = city_sp['city'].apply(text_normalizer)
+
+
+
 
 clients = pd.read_csv("datasets/olist_customers_dataset.csv", index_col=False, sep=",")
+
+st.markdown("Esse é o dataset de clientes: ")
+st.write(clients.head())
+st.markdown("---")
+
+st.markdown("Utilizamos um dataset de municípios para fazer o merge com o dataset de clientes.")
+st.markdown("Esse é o dataset de municípios: ")
+st.write(city_sp.head())
+st.markdown("Houve uma necessidade de normalizar os textos para que o merge funcionasse corretamente.")
+st.markdown("---")
+text1, text2 = st.columns(2)
+col1, col2 = st.columns(2)
+
+text1.write("Textos não formatados:")
+col1.write(city_sp['city'].head()) # Adicionar o texto antes de ser normalizado
+
+city_sp['city'] = city_sp['city'].apply(text_normalizer)
+
 clients['ddd'] = clients['ddd'].replace('SP', 11)
 clients['city'] = clients['city'].apply(text_normalizer)
 
-client_city_merge = pd.merge(city_sp, clients, on='city', how='inner')
+text2.write("Textos normalizados:")
+col2.write(city_sp['city'].head())
 
-client_count = client_city_merge.groupby('city').size().reset_index(name='client_count')
-df_final = pd.merge(client_city_merge, client_count, on='city', how='left')
+client_city_merge = pd.merge(city_sp, clients, on='city', how='inner') # merge entre as cidades e os clientes
+st.markdown("---")
+st.markdown("Esse é o dataset após o merge entre os clientes e as cidades: ")
+st.markdown("Esse dataset contém informações sobre os clientes e suas respectivas cidades.")
+st.write(client_city_merge.head())
+st.markdown("---")
 
+client_count = client_city_merge.groupby('city').size().reset_index(name='client_count') # contagem de clientes por cidade
+df_final = pd.merge(client_city_merge, client_count, on='city', how='left') #count com merge
+st.markdown("Aqui está os dados finais já tratados:")
+st.write(df_final.head())
+st.markdown("---")
+
+st.markdown("# Análise dos dados tratados")
 fig_customer_city = px.choropleth_mapbox(df_final, 
                                locations="codigo_ibge",
                                geojson=sp_state,
@@ -114,19 +163,45 @@ fig_customer_city = px.choropleth_mapbox(df_final,
                                title="Quantidade de clientes por município")
 st.plotly_chart(fig_customer_city, use_container_width=True)
 
+#-----------------------------------------------------------------------------------------------------------------------------------------------------------------#
+
 st.markdown("---")
 st.title("Categorias de Produtos com mais Vendas")
 st.markdown("Essa análise mostra a quantidade de vendas por categoria de produto.")
 st.markdown("---")
 
-
+produtosfull = pd.read_csv("datasets/olist_products_dataset.csv",  index_col=False)
+ordersfull = pd.read_csv("datasets/olist_order_items_dataset.csv", index_col=False)
 produtos = pd.read_csv("datasets/olist_products_dataset.csv",  usecols =['product_id','product_category_name'])
 orders = pd.read_csv("datasets/olist_order_items_dataset.csv", usecols=['order_id','product_id'])
 
 
+st.markdown("Esse é o dataset de produtos sem tratamento: ")
+st.write(produtosfull.head())
+st.markdown("---")
+st.markdown("Esse é o dataset de pedidos sem tratamento: ")
+st.write(ordersfull.head())
+st.markdown("---")
+st.markdown("Esse é o dataset de produtos com as colunas de interesse: ")
+st.write(produtos.head())
+st.markdown("---")
+st.markdown("Esse é o dataset de pedidos com as colunas de interesse: ")
+st.write(orders.head())
+
+
 productosxorders = pd.merge(produtos, orders, on='product_id', how='inner')
+
+st.markdown("Esse é o dataset de produtos e pedidos após o merge: ")
+st.write(productosxorders.head())
+st.markdown("---")
+
 orders_count = productosxorders.groupby('product_category_name').size().reset_index(name='orders_count')	
 productosxorders = pd.merge(produtos, orders_count, on='product_category_name', how='left')
+
+st.markdown("Esse é o dataset de produtos e pedidos após o merge com a contagem de pedidos: ")
+st.write(productosxorders.head())
+st.markdown("---")
+
 
 fig_pizza = px.pie(productosxorders,
                    names='product_category_name',
@@ -148,7 +223,5 @@ fig_pizza.update_traces(textfont_size=12, textfont_color='black')
 st.plotly_chart(fig_pizza, use_container_width=True, use_container_height=True)
 
 
-
-
-
 st.markdown("---")
+
