@@ -133,7 +133,7 @@ st.plotly_chart(fig, use_container_width=True)
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 st.markdown("---")
-st.title("Tipos de Cliente por Geolocalização")
+st.title("Quantidade de Cliente por Geolocalização")
 st.markdown("Essa análise mostra a quantidade de clientes por município na região de São Paulo.")
 st.markdown("---")
 
